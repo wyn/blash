@@ -166,6 +166,13 @@ dnrm2 n dx incx =
   in 
     case xmax == fZERO of
     True -> fZERO
-    False -> sqrt $ ddot (V.length dx') dx' 1 dx' 1
+    False ->
+      let scale = 1.0 / xmax
+          scaled_dx' = V.map (* scale) dx'
+          n' = V.length scaled_dx'
+          scaled_drnm2 = sqrt $ ddot n' scaled_dx' 1 scaled_dx' 1
+      in
+        xmax * scaled_drnm2
+
 
 
