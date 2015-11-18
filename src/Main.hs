@@ -1,12 +1,24 @@
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module Main where
 
+import qualified Language.C.Inline as C
 import Control.Monad (forM_)
 import Control.Monad.Primitive (PrimMonad, PrimState)
 import qualified Data.Vector.Unboxed as V
 import qualified Data.Vector.Unboxed.Mutable as M
-import System.Random (StdGen, getStdGen, randomR)
+-- import System.Random (StdGen, getStdGen, randomR)
 
 
+C.include "<math.h>"
+
+main :: IO ()
+main = do
+    x <- [C.exp| double{ cos(1) } |]
+    print x
+
+         
 type Inc = Int
 type Size = Int -- this may not be the length of the vector !!
 
@@ -134,7 +146,7 @@ stride :: (V.Unbox a)
           -> V.Vector a
 stride n vec inc = V.take n $ V.ifilter (incrementer inc) vec
   where 
-    incrementer inc i _ = 0 == (i `mod` inc)
+    incrementer inc' i _ = 0 == (i `mod` inc')
 
 
 -- /* compute the L2 norm of array DX of length N, stride INCX */

@@ -20,3 +20,11 @@ executable vec
                      , vector
                      , random
                      , primitive
+                     , inline-c
+                     
+  -- Here the corresponding C sources must be listed for every module
+  -- that uses C snippets.  Presumably we could automatically generate
+  -- this.
+  c-sources:           src/Main.c
+  cc-options:          -Wall
+  ghc-options:         -Wall
