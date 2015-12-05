@@ -5,10 +5,10 @@ description:         Please see README.md
 homepage:            http://github.com/githubuser/vec#readme
 license:             BSD3
 license-file:        LICENSE
-author:              Author name here
-maintainer:          example@example.com
-copyright:           2010 Author Here
-category:            Web
+author:              Simon Parry
+maintainer:          simon.parry@coshx.co.uk
+copyright:           2015 CoshX Ltd
+category:            Math
 build-type:          Simple
 cabal-version:       >=1.10
 
