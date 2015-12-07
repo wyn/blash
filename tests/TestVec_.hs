@@ -23,30 +23,48 @@ C.context (C.baseCtx <> C.vecCtx)
 
 C.include "<math.h>"
 C.include "<string.h>"
+--C.include "slsqp.h"
+
+-- vectorFromC :: Storable a => Int -> Ptr a -> IO (VS.Vector a)
+-- vectorFromC len ptr = do
+--   ptr' <- newForeignPtr_ ptr
+--   VS.freeze $ VSM.unsafeFromForeignPtr0 ptr' $ fromIntegral len
+
+-- vectorToC :: Storable a => VS.Vector a -> Int -> Ptr a -> IO ()
+-- vectorToC vec neq ptr = do
+--   ptr' <- newForeignPtr_ ptr
+--   VS.copy (VSM.unsafeFromForeignPtr0 ptr' $ fromIntegral neq) vec
 
 
 main :: IO ()
 main = Hspec.hspec $ do
   Hspec.describe "Passing to inline-c" $ do
     Hspec.it "Call simple function with c-array" $ do
-      -- setup TODO do as quickcheck gens
       let xs_ = [1,2,3,4,5,6]
           ys_ = [6,7,8,9,1,2,3,4,5]
-          (n, incx, incy) = (2, 2, 3)
-      -- logic starts here
-      let actual = M.dcopy (fromIntegral n) (VS.fromList xs_) (fromIntegral incx) (VS.fromList ys_) (fromIntegral incy)
-          expected = VS.fromList ys_
-      dcopy___W n (VS.fromList xs_) incx expected incy
+          xs = VS.fromList xs_
+          ys = VS.fromList ys_
+          zs = M.dcopy 2 xs 2 ys 3
+          
+          zs' = VS.fromList ys_
+      dcopy___W 2 xs 2 zs' 3
       -- invariant: same size as ys always      
-      length ys_ `Hspec.shouldBe` VS.length actual
-      length ys_ `Hspec.shouldBe` VS.length expected
+      VS.length ys `Hspec.shouldBe` VS.length zs
+      VS.length ys `Hspec.shouldBe` VS.length zs'
       -- invariant: both methods give same answer
-      actual `Hspec.shouldBe` expected
+      zs' `Hspec.shouldBe` zs
 
+      -- zs' <- alloca $ \xptr -> do
+      --   vectorToC xs (VS.length xs) xptr
+      --   alloca $ \yptr -> do
+      --     vectorToC ys (VS.length ys) yptr
+      --     dcopy___W 2 xptr 2 yptr 3
+      --     vectorFromC (VS.length ys) yptr
          
 -- /********************************* BLAS1 routines *************************/
 -- 
 -- /*     COPIES A VECTOR, X, TO A VECTOR, Y, with the given increments */
+-- dcopy___W :: CInt -> Ptr CDouble -> CInt -> Ptr CDouble -> CInt -> IO ()
 dcopy___W :: CInt -> VS.Vector CDouble -> CInt -> VS.Vector CDouble -> CInt -> IO ()
 dcopy___W n_ dx incx dy incy = do
   [C.block| void
@@ -66,6 +84,16 @@ dcopy___W n_ dx incx dy incy = do
    }
    |]
   
+       -- int n = $(int n_);
+       -- dcopy___(&n, $(double* dx), $(int incx), $(double* dy), $(int incy));
+
+-- main_ :: Ptr CInt -> IO (CDouble)
+-- main_ n = do
+--   [C.block| double {
+--        int nn = $(int* n)[1];
+--        return cos(nn);
+--        }
+--   |]
 
 -- -- /* CONSTANT TIMES A VECTOR PLUS A VECTOR. */
 -- -- static void daxpy_sl__(int *n_, const double *da_, const double *dx, 

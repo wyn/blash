@@ -12,24 +12,23 @@ category:            Math
 build-type:          Simple
 cabal-version:       >=1.10
 
-executable vec
+library
+  exposed-modules:     Vec
   hs-source-dirs:      src
-  main-is:             Main.hs
   default-language:    Haskell2010
-  ghc-options:         -Wall
   build-depends:       base >= 4.7 && < 5
                      , vector
                      , random
                      , primitive
+  ghc-options:         -Wall
                      
 test-suite test-vec
   type:                exitcode-stdio-1.0
   hs-source-dirs:      tests
   main-is:             TestVec.hs
   build-depends:       base >=4.7 && <5
+                     , vec
                      , vector
-                     , random
-                     , primitive
                      , inline-c
                      , hspec >= 2
                      , QuickCheck
