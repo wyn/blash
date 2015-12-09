@@ -27,21 +27,42 @@ C.include "<string.h>"
 
 main :: IO ()
 main = Hspec.hspec $ do
-  Hspec.describe "Passing to inline-c" $ do
-    Hspec.it "Call simple function with c-array" $ do
-      -- setup TODO do as quickcheck gens
-      let xs_ = [1,2,3,4,5,6]
-          ys_ = [6,7,8,9,1,2,3,4,5]
-          (n, incx, incy) = (2, 2, 3)
+  Hspec.describe "dcopy haskell implementation" $ do
+    -- setup TODO do as quickcheck gens
+    let xs_ = [1,2,3,4,5,6]
+        ys_ = [6,7,8,9,1,2,3,4,5]
+        (n, incx, incy) = (2, 2, 3)
+        
+    Hspec.it "dcopy should compare exactly to inline-c dcopy___W" $ do
+      let expected = VS.fromList ys_
+      dcopy___W n (VS.fromList xs_) incx expected incy
+
       -- logic starts here
       let actual = M.dcopy (fromIntegral n) (VS.fromList xs_) (fromIntegral incx) (VS.fromList ys_) (fromIntegral incy)
-          expected = VS.fromList ys_
-      dcopy___W n (VS.fromList xs_) incx expected incy
+
       -- invariant: same size as ys always      
       length ys_ `Hspec.shouldBe` VS.length actual
       length ys_ `Hspec.shouldBe` VS.length expected
+
       -- invariant: both methods give same answer
       actual `Hspec.shouldBe` expected
+      
+    Hspec.it "dcopyM should compare exactly to inline-c dcopy___W" $ do
+      let expected = VS.fromList ys_
+      dcopy___W n (VS.fromList xs_) incx expected incy
+
+      -- logic starts here
+      actual' <- VS.thaw $ VS.fromList ys_
+      M.dcopyM (fromIntegral n) (VS.fromList xs_) (fromIntegral incx) actual' (fromIntegral incy)
+      actual <- VS.freeze actual'
+
+      -- invariant: same size as ys always
+      length ys_ `Hspec.shouldBe` VS.length actual
+      length ys_ `Hspec.shouldBe` VS.length expected
+
+      -- invariant: both methods give same answer
+      actual `Hspec.shouldBe` expected
+
 
          
 -- /********************************* BLAS1 routines *************************/
