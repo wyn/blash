@@ -41,5 +41,8 @@ test-suite test-vec
   cc-options:          -Wall
   ghc-options:         -Wall
   include-dirs:        tests/atest
+                     , tests/nlopt
   extra-lib-dirs:      tests/atest
+                     , tests/nlopt
   extra-libraries:     atest
+                     , slsqp

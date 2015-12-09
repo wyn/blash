@@ -3,9 +3,9 @@
 
 /* #include "nlopt.h" */
 /* #include "nlopt-util.h" */
-static void dcopy___(int *n_,
-                     const double *dx, int incx,
-                     double *dy, int incy);
+void dcopy___(int *n_,
+              const double *dx, int incx,
+              double *dy, int incy);
 
 
 /* #ifdef __cplusplus */

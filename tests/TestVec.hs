@@ -24,6 +24,7 @@ C.context (C.baseCtx <> C.vecCtx)
 C.include "<math.h>"
 C.include "<string.h>"
 C.include "atest.h"
+C.include "slsqp.h"
 
 main :: IO ()
 main = Hspec.hspec $ do
@@ -72,28 +73,12 @@ readAndSumW n = do
   [C.exp| int { readAndSum( $(int n) ) } |]
 
 
-
-
-
--- /********************************* BLAS1 routines *************************/
--- 
--- /*     COPIES A VECTOR, X, TO A VECTOR, Y, with the given increments */
 dcopy___W :: CInt -> VS.Vector CDouble -> CInt -> VS.Vector CDouble -> CInt -> IO ()
 dcopy___W n_ dx incx dy incy = do
   [C.block| void
    {
-     int i = 0;
      int n = $(int n_);
-     if (n <= 0) return;
-     if ($(int incx) == 1 && $(int incy) == 1)
-          memcpy($vec-ptr:(double* dy), $vec-ptr:(double* dx), sizeof(double) * ((unsigned) n));
-     else if ($(int incx) == 0 && $(int incy) == 1) {
-          double x = $vec-ptr:(double* dx)[0];
-          for (i = 0; i < n; ++i) $vec-ptr:(double* dy)[i] = x;
-     }
-     else {
-          for (i = 0; i < n; ++i) $vec-ptr:(double* dy)[i*$(int incy)] = $vec-ptr:(double* dx)[i*$(int incx)];
-     }
+     dcopy___(&n, $vec-ptr:(double* dx), $(int incx), $vec-ptr:(double* dy), $(int incy));
    }
    |]
   
