@@ -23,7 +23,7 @@ C.context (C.baseCtx <> C.vecCtx)
 
 C.include "<math.h>"
 C.include "<string.h>"
-
+C.include "atest.h"
 
 main :: IO ()
 main = Hspec.hspec $ do
@@ -63,8 +63,18 @@ main = Hspec.hspec $ do
       -- invariant: both methods give same answer
       actual `Hspec.shouldBe` expected
 
+    Hspec.it "calling readAndSum" $ do
+      x <- readAndSumW 5
+      x `Hspec.shouldBe` 10
 
-         
+readAndSumW :: CInt -> IO (CInt)
+readAndSumW n = do
+  [C.exp| int { readAndSum( $(int n) ) } |]
+
+
+
+
+
 -- /********************************* BLAS1 routines *************************/
 -- 
 -- /*     COPIES A VECTOR, X, TO A VECTOR, Y, with the given increments */

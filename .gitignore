@@ -1,2 +1,5 @@
 .stack-work/
 src/Main.c
+tests/TestVec.c
+*.o
+*.a

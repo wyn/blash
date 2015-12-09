@@ -40,3 +40,6 @@ test-suite test-vec
   c-sources:           tests/TestVec.c
   cc-options:          -Wall
   ghc-options:         -Wall
+  include-dirs:        tests/atest
+  extra-lib-dirs:      tests/atest
+  extra-libraries:     atest
