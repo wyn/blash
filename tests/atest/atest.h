@@ -1,0 +1,1 @@
+int readAndSum(int n);
