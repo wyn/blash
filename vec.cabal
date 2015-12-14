@@ -42,11 +42,12 @@ test-suite test-vec
   cc-options:          -Wall
   ghc-options:         -Wall
   include-dirs:        tests/atest
-                     , tests/nlopt
---                     , tests/CBLAS/include
+--                     , tests/nlopt
+                     , tests/blas/include
   extra-lib-dirs:      tests/atest
-                     , tests/nlopt
---                     , tests/CBLAS/lib
+--                     , tests/nlopt
+                     , tests/blas/lib
   extra-libraries:     atest
-                     , slsqp
---                     , cblas
+                     , openblas
+--                     , slsqp
+

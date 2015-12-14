@@ -3,4 +3,5 @@ src/Main.c
 tests/TestVec.c
 *.o
 *.a
-tests/CBLAS/
+tests/OpenBLAS/
+tests/blas/

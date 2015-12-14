@@ -20,7 +20,8 @@ C.context (C.baseCtx <> C.vecCtx)
 C.include "<math.h>"
 C.include "<string.h>"
 C.include "atest.h"
-C.include "slsqp.h"
+C.include "cblas.h"
+-- C.include "openblas_config.h"
 
     
 main :: IO ()
@@ -95,10 +96,9 @@ cblas_dcopyW n dx incx dy incy = do
       incy' = fromIntegral incy
   [C.block| void
    {
-     int n_ = $(int n');
-     dcopy___(
-         &n_,
-         $vec-ptr:(const double* dx),
+     cblas_dcopy(
+         $(int n'),
+         $vec-ptr:(double* dx),
          $(int incx'),
          $vec-ptr:(double* dy),
          $(int incy')
@@ -106,11 +106,12 @@ cblas_dcopyW n dx incx dy incy = do
    }
    |]
   
-     -- cblas_dcopy(
-     --     $(const int n'),
+     -- int n_ = $(int n');
+     -- dcopy___(
+     --     &n_,
      --     $vec-ptr:(const double* dx),
-     --     $(const int incx'),
+     --     $(int incx'),
      --     $vec-ptr:(double* dy),
-     --     $(const int incy')
+     --     $(int incy')
      --     );
 
