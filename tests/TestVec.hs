@@ -12,7 +12,7 @@ import qualified Test.Hspec as Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
 import GHC.Generics (Generic)
-import qualified Vec as M
+import qualified VecImpl as M
 
 
 C.context (C.baseCtx <> C.vecCtx)
