@@ -1,21 +1,17 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE DeriveGeneric #-}
 
+import           Data.Coerce (coerce)
 import qualified Language.C.Inline as C
--- import Control.Monad (forM_)
--- import Control.Monad.Primitive (PrimMonad, PrimState)
--- import qualified Data.Vector.Unboxed as V
--- import qualified Data.Vector.Unboxed.Mutable as M
 import qualified Data.Vector.Storable as VS
--- import qualified Data.Vector.Storable.Mutable as VSM
--- import           Foreign (alloca)
 import           Foreign.C.Types
--- import           Foreign.Ptr (Ptr)
--- import           Foreign.ForeignPtr (newForeignPtr_)
--- import           Foreign.Storable (Storable) --, peek)
 import           Data.Monoid ((<>))
 import qualified Test.Hspec as Hspec
-
+import Test.QuickCheck
+import Test.QuickCheck.Monadic
+import GHC.Generics (Generic)
 import qualified Vec as M
 
 
@@ -26,102 +22,95 @@ C.include "<string.h>"
 C.include "atest.h"
 C.include "slsqp.h"
 
+    
 main :: IO ()
 main = Hspec.hspec $ do
   Hspec.describe "dcopy haskell implementation" $ do
-    -- setup TODO do as quickcheck gens
-    let xs_ = [1,2,3,4,5,6]
-        ys_ = [6,7,8,9,1,2,3,4,5]
-        (n, incx, incy) = (2, 2, 3)
-        
-    Hspec.it "dcopy should compare exactly to inline-c dcopy___W" $ do
-      let expected = VS.fromList ys_
-      dcopy___W n (VS.fromList xs_) incx expected incy
-
-      -- logic starts here
-      let actual = M.dcopy (fromIntegral n) (VS.fromList xs_) (fromIntegral incx) (VS.fromList ys_) (fromIntegral incy)
-
-      -- invariant: same size as ys always      
-      length ys_ `Hspec.shouldBe` VS.length actual
-      length ys_ `Hspec.shouldBe` VS.length expected
-
-      -- invariant: both methods give same answer
-      actual `Hspec.shouldBe` expected
-      
-    Hspec.it "dcopyM should compare exactly to inline-c dcopy___W" $ do
-      let expected = VS.fromList ys_
-      dcopy___W n (VS.fromList xs_) incx expected incy
-
-      -- logic starts here
-      actual' <- VS.thaw $ VS.fromList ys_
-      M.dcopyM (fromIntegral n) (VS.fromList xs_) (fromIntegral incx) actual' (fromIntegral incy)
-      actual <- VS.freeze actual'
-
-      -- invariant: same size as ys always
-      length ys_ `Hspec.shouldBe` VS.length actual
-      length ys_ `Hspec.shouldBe` VS.length expected
-
-      -- invariant: both methods give same answer
-      actual `Hspec.shouldBe` expected
-
-    Hspec.it "calling readAndSum" $ do
-      x <- readAndSumW 5
-      x `Hspec.shouldBe` 10
-
-readAndSumW :: CInt -> IO (CInt)
+    Hspec.it "calling readAndSum" $ property $ prop_readAndSum
+    Hspec.it "dcopyM should compare exactly to inline-c cblas_dcopyW" $ property $ prop_dcopyM
+    
+readAndSumW :: Int -> IO (Int)
 readAndSumW n = do
-  [C.exp| int { readAndSum( $(int n) ) } |]
+  let n' = fromIntegral n
+  x <- [C.exp| int { readAndSum( $(int n') ) } |]
+  return $ fromIntegral x
 
+prop_readAndSum :: Int -> Property
+prop_readAndSum n = monadicIO $ do
+  x <- run $ readAndSumW (n+1)
+  assert (x == (sum [1..n]))
 
-dcopy___W :: CInt -> VS.Vector CDouble -> CInt -> VS.Vector CDouble -> CInt -> IO ()
-dcopy___W n_ dx incx dy incy = do
+-- need special arbitrary instance
+-- to make the inc, n, vectors sizes
+-- work out
+data CopyArgs a = CopyArgs {
+    n_ :: Int
+  , xs_ :: [a]
+  , incx_ :: Int
+  , ys_ :: [a]
+  , incy_ :: Int
+  } deriving (Eq, Show, Generic)
+
+instance (Arbitrary a) => Arbitrary (CopyArgs a) where
+  arbitrary = do
+    Positive n <- arbitrary
+    Positive incx <- arbitrary
+    Positive incy <- arbitrary
+    xs <- vector (n*incx)
+    ys <- vector (n*incy)
+    return $ CopyArgs n xs incx ys incy
+    
+  shrink = genericShrink
+
+prop_dcopyM :: CopyArgs Double -> Property
+prop_dcopyM (CopyArgs n xs incx ys incy) = monadicIO $ do
+  -- expected uses the CBLAS implementation via inline-c
+  expected <- run $ do
+    let expected' = VS.fromList (coerce ys)
+        xs' = VS.fromList (coerce xs)
+    cblas_dcopyW n xs' incx expected' incy
+    return expected'
+    
+  -- actual calls the monadic haskell implementation directly
+  actual <- run $ do
+    let xs' = VS.fromList xs
+    actual' <- VS.thaw $ VS.fromList ys
+    M.dcopyM n xs' incx actual' incy
+    VS.freeze actual'
+
+  -- invariant: same size as ys always
+  assert (length ys == VS.length actual)
+  assert (length ys == VS.length expected)
+
+  -- invariant: both methods give same answer
+  let ass = VS.toList actual
+      ess = VS.toList expected
+  assert $ and $ zipWith (\a e -> a == coerce e) ass ess
+  
+cblas_dcopyW :: Int -> VS.Vector CDouble -> Int -> VS.Vector CDouble -> Int -> IO ()
+cblas_dcopyW n _  incx _  incy | n <= 0 || incx <= 0 || incy <= 0 = return ()
+cblas_dcopyW n dx incx dy incy = do
+  let n' = fromIntegral n
+      incx' = fromIntegral incx
+      incy' = fromIntegral incy
   [C.block| void
    {
-     int n = $(int n_);
-     dcopy___(&n, $vec-ptr:(double* dx), $(int incx), $vec-ptr:(double* dy), $(int incy));
+     int n_ = $(int n');
+     dcopy___(
+         &n_,
+         $vec-ptr:(const double* dx),
+         $(int incx'),
+         $vec-ptr:(double* dy),
+         $(int incy')
+         );
    }
    |]
   
-
--- -- /* CONSTANT TIMES A VECTOR PLUS A VECTOR. */
--- -- static void daxpy_sl__(int *n_, const double *da_, const double *dx, 
--- -- 		       int incx, double *dy, int incy)
--- -- {
--- --      int n = *n_, i;  
--- --      double da = *da_;
-
--- --      if (n <= 0 || da == 0) return;
--- --      for (i = 0; i < n; ++i) dy[i*incy] += da * dx[i*incx];
--- -- }
-
-
--- -- /* dot product dx dot dy. */
--- -- static double ddot_sl__(int *n_, double *dx, int incx, double *dy, int incy)
--- -- {
--- --      int n = *n_, i;
--- --      long double sum = 0;
--- --      if (n <= 0) return 0;
--- --      for (i = 0; i < n; ++i) sum += dx[i*incx] * dy[i*incy];
--- --      return (double) sum;
--- -- }
-
--- -- /* compute the L2 norm of array DX of length N, stride INCX */
--- -- static double dnrm2___(int *n_, double *dx, int incx)
--- -- {
--- --      int i, n = *n_;
--- --      double xmax = 0, scale;
--- --      long double sum = 0;
--- --      for (i = 0; i < n; ++i) {
--- --           double xabs = fabs(dx[incx*i]);
--- --           if (xmax < xabs) xmax = xabs;
--- --      }
--- --      if (xmax == 0) return 0;
--- --      scale = 1.0 / xmax;
--- --      for (i = 0; i < n; ++i) {
--- --           double xs = scale * dx[incx*i];
--- --           sum += xs * xs;
--- --      }
--- --      return xmax * sqrt((double) sum);
--- -- }
-
+     -- cblas_dcopy(
+     --     $(const int n'),
+     --     $vec-ptr:(const double* dx),
+     --     $(const int incx'),
+     --     $vec-ptr:(double* dy),
+     --     $(const int incy')
+     --     );
 

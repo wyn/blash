@@ -32,6 +32,7 @@ test-suite test-vec
                      , inline-c
                      , hspec >= 2
                      , QuickCheck
+                     , process
   default-language:    Haskell2010
 
   -- Here the corresponding C sources must be listed for every module
@@ -42,7 +43,10 @@ test-suite test-vec
   ghc-options:         -Wall
   include-dirs:        tests/atest
                      , tests/nlopt
+--                     , tests/CBLAS/include
   extra-lib-dirs:      tests/atest
                      , tests/nlopt
+--                     , tests/CBLAS/lib
   extra-libraries:     atest
                      , slsqp
+--                     , cblas

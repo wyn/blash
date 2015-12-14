@@ -31,7 +31,7 @@ dcopyM :: (PrimMonad m, V.Storable a)
           -> M.MVector (PrimState m) a
           -> Inc
           -> m ()
-dcopyM n _ _ _ _ | n <= 0 = return ()
+dcopyM n _  incx _  incy | n <= 0 || incx <= 0 || incy <= 0 = return ()
 dcopyM n dx incx dy incy = do
   dx' <- V.thaw dx
   forM_ [0..(n-1)] $ \i -> do
