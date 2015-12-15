@@ -18,7 +18,6 @@ fZERO = 0
 -- /********************************* BLAS1 routines *************************/
 -- 
 -- /*     COPIES A VECTOR, X, TO A VECTOR, Y, with the given increments */
-
 xCopyM :: (PrimMonad m, V.Storable a)
           => Size
           -> V.Vector a
@@ -37,38 +36,26 @@ xCopyM n dx incx dy incy = do
     M.write dy iy dx_ix
 
 
--- -- /* CONSTANT TIMES A VECTOR PLUS A VECTOR. */
+-- /* CONSTANT TIMES A VECTOR PLUS A VECTOR. */
+axpyM :: (PrimMonad m, V.Storable a, Floating a, Eq a)
+          => Size
+          -> a
+          -> V.Vector a
+          -> Inc
+          -> M.MVector (PrimState m) a
+          -> Inc
+          -> m ()
+axpyM n da _  incx _  incy | n <= 0 || incx <= 0 || incy <= 0 || da == fZERO = return ()
+axpyM n da dx incx dy incy = do
+  dx' <- V.thaw dx
+  forM_ [0..(n-1)] $ \i -> do
+    let 
+      iy = i * incy
+      ix = i * incx
+    dy_iy <- M.read dy iy
+    dx_ix <- M.read dx' ix
+    M.write dy iy $ dy_iy + (da * dx_ix)
 
--- daxpyM :: (PrimMonad m, V.Unbox a, Eq a, Floating a)
---           => Size
---           -> a
---           -> V.Vector a
---           -> Inc
---           -> M.MVector (PrimState m) a
---           -> Inc
---           -> m ()
--- daxpyM n da _ _ _ _ | n <= 0 || da == fZERO = return ()
--- daxpyM n da dx incx dy incy = do
---   dx' <- V.thaw dx
---   forM_ [0..(n-1)] $ \i -> do
---     let 
---       iy = i * incy
---       ix = i * incx
---     dy_iy <- M.read dy iy
---     dx_ix <- M.read dx' ix
---     M.write dy iy $ dy_iy + (da * dx_ix)
-
--- daxpy :: (V.Unbox a, Eq a, Floating a)
---          => Size
---          -> a
---          -> V.Vector a
---          -> Inc
---          -> V.Vector a
---          -> Inc
---          -> V.Vector a
--- daxpy n da dx incx dy incy = V.modify modifier dy
---   where
---     modifier ys = daxpyM n da dx incx ys incy
 
 -- -- /* dot product dx dot dy. */
 -- ddot :: (V.Unbox a, Eq a, Floating a)
