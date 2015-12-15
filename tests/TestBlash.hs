@@ -68,7 +68,10 @@ prop_copyM (CopyArgs n xs incx ys incy) = monadicIO $ do
   expected <- run $ do
     let expected' = VS.fromList (coerce ys)
         xs' = VS.fromList (coerce xs)
-    cblas_copyW n xs' incx expected' incy
+        n' = fromIntegral n
+        incx' = fromIntegral incx
+        incy' = fromIntegral incy
+    cblas_copyW n' xs' incx' expected' incy'
     return expected'
     
   -- actual calls the monadic haskell implementation directly
@@ -87,20 +90,17 @@ prop_copyM (CopyArgs n xs incx ys incy) = monadicIO $ do
       ess = VS.toList expected
   assert $ and $ zipWith (\a e -> a == coerce e) ass ess
   
-cblas_copyW :: Int -> VS.Vector CDouble -> Int -> VS.Vector CDouble -> Int -> IO ()
+cblas_copyW :: CInt -> VS.Vector CDouble -> CInt -> VS.Vector CDouble -> CInt -> IO ()
 cblas_copyW n _  incx _  incy | n <= 0 || incx <= 0 || incy <= 0 = return ()
 cblas_copyW n dx incx dy incy = do
-  let n' = fromIntegral n
-      incx' = fromIntegral incx
-      incy' = fromIntegral incy
   [C.block| void
    {
      cblas_dcopy(
-         $(int n'),
+         $(int n),
          $vec-ptr:(double* dx),
-         $(int incx'),
+         $(int incx),
          $vec-ptr:(double* dy),
-         $(int incy')
+         $(int incy)
          );
    }
    |]
