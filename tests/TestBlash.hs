@@ -25,9 +25,9 @@ C.include "cblas.h"
     
 main :: IO ()
 main = Hspec.hspec $ do
-  Hspec.describe "xCopy haskell implementation" $ do
+  Hspec.describe "copy haskell implementation" $ do
     Hspec.it "calling readAndSum: helping understand monadic properties" $ property $ prop_readAndSum
-    Hspec.it "xCopyM should compare exactly to inline-c cblas_dcopyW" $ property $ prop_xCopyM
+    Hspec.it "copyM should compare exactly to inline-c cblas_dcopyW" $ property $ prop_copyM
     
 readAndSumW :: Int -> IO (Int)
 readAndSumW n = do
@@ -62,20 +62,20 @@ instance (Arbitrary a) => Arbitrary (CopyArgs a) where
     
   shrink = genericShrink
 
-prop_xCopyM :: CopyArgs Double -> Property
-prop_xCopyM (CopyArgs n xs incx ys incy) = monadicIO $ do
+prop_copyM :: CopyArgs Double -> Property
+prop_copyM (CopyArgs n xs incx ys incy) = monadicIO $ do
   -- expected uses the CBLAS implementation via inline-c
   expected <- run $ do
     let expected' = VS.fromList (coerce ys)
         xs' = VS.fromList (coerce xs)
-    cblas_xCopyW n xs' incx expected' incy
+    cblas_copyW n xs' incx expected' incy
     return expected'
     
   -- actual calls the monadic haskell implementation directly
   actual <- run $ do
     let xs' = VS.fromList xs
     actual' <- VS.thaw $ VS.fromList ys
-    M.xCopyM n xs' incx actual' incy
+    M.copyM n xs' incx actual' incy
     VS.freeze actual'
 
   -- invariant: same size as ys always
@@ -87,9 +87,9 @@ prop_xCopyM (CopyArgs n xs incx ys incy) = monadicIO $ do
       ess = VS.toList expected
   assert $ and $ zipWith (\a e -> a == coerce e) ass ess
   
-cblas_xCopyW :: Int -> VS.Vector CDouble -> Int -> VS.Vector CDouble -> Int -> IO ()
-cblas_xCopyW n _  incx _  incy | n <= 0 || incx <= 0 || incy <= 0 = return ()
-cblas_xCopyW n dx incx dy incy = do
+cblas_copyW :: Int -> VS.Vector CDouble -> Int -> VS.Vector CDouble -> Int -> IO ()
+cblas_copyW n _  incx _  incy | n <= 0 || incx <= 0 || incy <= 0 = return ()
+cblas_copyW n dx incx dy incy = do
   let n' = fromIntegral n
       incx' = fromIntegral incx
       incy' = fromIntegral incy

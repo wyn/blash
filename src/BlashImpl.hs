@@ -18,15 +18,15 @@ fZERO = 0
 -- /********************************* BLAS1 routines *************************/
 -- 
 -- /*     COPIES A VECTOR, X, TO A VECTOR, Y, with the given increments */
-xCopyM :: (PrimMonad m, V.Storable a)
+copyM :: (PrimMonad m, V.Storable a)
           => Size
           -> V.Vector a
           -> Inc
           -> M.MVector (PrimState m) a
           -> Inc
           -> m ()
-xCopyM n _  incx _  incy | n <= 0 || incx <= 0 || incy <= 0 = return ()
-xCopyM n dx incx dy incy = do
+copyM n _  incx _  incy | n <= 0 || incx <= 0 || incy <= 0 = return ()
+copyM n dx incx dy incy = do
   dx' <- V.thaw dx
   forM_ [0..(n-1)] $ \i -> do
     let 
