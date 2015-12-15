@@ -43,13 +43,8 @@ prop_readAndSum n = monadicIO $ do
 -- need special arbitrary instance
 -- to make the inc, n, vectors sizes
 -- work out
-data CopyArgs a = CopyArgs {
-    n_ :: Int
-  , xs_ :: [a]
-  , incx_ :: Int
-  , ys_ :: [a]
-  , incy_ :: Int
-  } deriving (Eq, Show, Generic)
+data CopyArgs a = CopyArgs Int [a] Int [a] Int
+                deriving (Eq, Show, Generic)
 
 instance (Arbitrary a) => Arbitrary (CopyArgs a) where
   arbitrary = do
