@@ -1,5 +1,5 @@
 .stack-work/
 src/Main.c
-tests/TestVec.c
+tests/Test*.c
 *.o
 tests/OpenBLAS/

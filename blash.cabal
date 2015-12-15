@@ -1,8 +1,8 @@
-name:                vec
-version:             0.1.0.0
+name:                blash
+version:             0.1.1.0
 synopsis:            Simple project template from stack
 description:         Please see README.md
-homepage:            http://github.com/githubuser/vec#readme
+homepage:            http://github.com/wyn/blash#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Simon Parry
@@ -13,7 +13,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Vec, VecImpl
+  exposed-modules:     Blash, BlashImpl
   hs-source-dirs:      src
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
@@ -22,12 +22,12 @@ library
                      , primitive
   ghc-options:         -Wall
                      
-test-suite test-vec
+test-suite test-blash
   type:                exitcode-stdio-1.0
   hs-source-dirs:      tests
-  main-is:             TestVec.hs
+  main-is:             TestBlash.hs
   build-depends:       base >=4.7 && <5
-                     , vec
+                     , blash
                      , vector
                      , inline-c
                      , hspec >= 2
@@ -38,16 +38,13 @@ test-suite test-vec
   -- Here the corresponding C sources must be listed for every module
   -- that uses C snippets.  Presumably we could automatically generate
   -- this.
-  c-sources:           tests/TestVec.c
+  c-sources:           tests/TestBlash.c
   cc-options:          -Wall
   ghc-options:         -Wall
   include-dirs:        tests/atest
---                     , tests/nlopt
                      , tests/blas/include
   extra-lib-dirs:      tests/atest
---                     , tests/nlopt
                      , tests/blas/lib
   extra-libraries:     atest
                      , openblas
---                     , slsqp
 

@@ -1,7 +1,7 @@
-module Vec where
+module Blash where
 
 import qualified Data.Vector.Storable as V
-import qualified VecImpl as VI
+import qualified BlashImpl as VI
 
 main :: IO ()
 main = undefined

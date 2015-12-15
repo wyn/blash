@@ -12,7 +12,7 @@ import qualified Test.Hspec as Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
 import GHC.Generics (Generic)
-import qualified VecImpl as M
+import qualified BlashImpl as M
 
 
 C.context (C.baseCtx <> C.vecCtx)
@@ -21,7 +21,6 @@ C.include "<math.h>"
 C.include "<string.h>"
 C.include "atest.h"
 C.include "cblas.h"
--- C.include "openblas_config.h"
 
     
 main :: IO ()

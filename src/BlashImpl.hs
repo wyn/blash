@@ -1,7 +1,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module VecImpl where
+module BlashImpl where
 
 import Control.Monad (forM_)
 import Control.Monad.Primitive (PrimMonad, PrimState)
