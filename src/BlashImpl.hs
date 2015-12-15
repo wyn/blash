@@ -19,15 +19,15 @@ fZERO = 0
 -- 
 -- /*     COPIES A VECTOR, X, TO A VECTOR, Y, with the given increments */
 
-dcopyM :: (PrimMonad m, V.Storable a)
+xCopyM :: (PrimMonad m, V.Storable a)
           => Size
           -> V.Vector a
           -> Inc
           -> M.MVector (PrimState m) a
           -> Inc
           -> m ()
-dcopyM n _  incx _  incy | n <= 0 || incx <= 0 || incy <= 0 = return ()
-dcopyM n dx incx dy incy = do
+xCopyM n _  incx _  incy | n <= 0 || incx <= 0 || incy <= 0 = return ()
+xCopyM n dx incx dy incy = do
   dx' <- V.thaw dx
   forM_ [0..(n-1)] $ \i -> do
     let 

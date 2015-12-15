@@ -6,14 +6,14 @@ import qualified BlashImpl as VI
 main :: IO ()
 main = undefined
 
-dcopy :: V.Storable a
+xCopy :: V.Storable a
          => VI.Size
          -> V.Vector a
          -> VI.Inc
          -> V.Vector a
          -> VI.Inc
          -> V.Vector a
-dcopy n dx incx dy incy = V.modify modifier dy
+xCopy n dx incx dy incy = V.modify modifier dy
   where
-    modifier ys = VI.dcopyM n dx incx ys incy
+    modifier ys = VI.xCopyM n dx incx ys incy
 
