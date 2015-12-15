@@ -2,6 +2,4 @@
 src/Main.c
 tests/TestVec.c
 *.o
-*.a
 tests/OpenBLAS/
-tests/blas/
