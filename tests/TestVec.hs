@@ -27,7 +27,7 @@ C.include "cblas.h"
 main :: IO ()
 main = Hspec.hspec $ do
   Hspec.describe "dcopy haskell implementation" $ do
-    Hspec.it "calling readAndSum" $ property $ prop_readAndSum
+    Hspec.it "calling readAndSum: helping understand monadic properties" $ property $ prop_readAndSum
     Hspec.it "dcopyM should compare exactly to inline-c cblas_dcopyW" $ property $ prop_dcopyM
     
 readAndSumW :: Int -> IO (Int)
