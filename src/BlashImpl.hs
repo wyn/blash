@@ -5,8 +5,8 @@ module BlashImpl where
 
 import Control.Monad (forM_)
 import Control.Monad.Primitive (PrimMonad, PrimState)
-import qualified Data.Vector.Storable as V
-import qualified Data.Vector.Storable.Mutable as M
+import qualified Data.Vector.Generic as V
+import qualified Data.Vector.Generic.Mutable as M
 
 
 type Inc = Int
@@ -18,11 +18,14 @@ fZERO = 0
 -- /********************************* BLAS1 routines *************************/
 -- 
 -- /*     COPIES A VECTOR, X, TO A VECTOR, Y, with the given increments */
-copyM :: (PrimMonad m, V.Storable a)
+copyM :: (PrimMonad m,
+          M.MVector mv a,
+          V.Vector v a
+         )
           => Size
-          -> V.Vector a
+          -> v a
           -> Inc
-          -> M.MVector (PrimState m) a
+          -> mv (PrimState m) a
           -> Inc
           -> m ()
 copyM n _  incx _  incy | n <= 0 || incx <= 0 || incy <= 0 = return ()
@@ -37,12 +40,17 @@ copyM n dx incx dy incy = do
 
 
 -- /* CONSTANT TIMES A VECTOR PLUS A VECTOR. */
-axpyM :: (PrimMonad m, V.Storable a, Floating a, Eq a)
+axpyM :: (PrimMonad m,
+          M.MVector mv a,
+          V.Vector v a,
+          Floating a,
+          Eq a
+         )
           => Size
           -> a
-          -> V.Vector a
+          -> v a
           -> Inc
-          -> M.MVector (PrimState m) a
+          -> mv (PrimState m) a
           -> Inc
           -> m ()
 axpyM n da _  incx _  incy | n <= 0 || incx <= 0 || incy <= 0 || da == fZERO = return ()

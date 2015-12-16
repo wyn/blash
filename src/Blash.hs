@@ -1,31 +1,31 @@
 module Blash where
 
-import qualified Data.Vector.Storable as V
+import qualified Data.Vector.Generic as V
 import qualified BlashImpl as VI
 
 main :: IO ()
 main = undefined
 
-copy :: V.Storable a
+copy :: (V.Vector v a)
          => VI.Size
-         -> V.Vector a
+         -> v a
          -> VI.Inc
-         -> V.Vector a
+         -> v a
          -> VI.Inc
-         -> V.Vector a
+         -> v a
 copy n dx incx dy incy = V.modify modifier dy
   where
     modifier ys = VI.copyM n dx incx ys incy
 
 
-axpy :: (V.Storable a, Eq a, Floating a)
+axpy :: (V.Vector v a, Eq a, Floating a)
          => VI.Size
          -> a
-         -> V.Vector a
+         -> v a
          -> VI.Inc
-         -> V.Vector a
+         -> v a
          -> VI.Inc
-         -> V.Vector a
+         -> v a
 axpy n da dx incx dy incy = V.modify modifier dy
   where
     modifier ys = VI.axpyM n da dx incx ys incy
