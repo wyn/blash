@@ -25,9 +25,10 @@ C.include "cblas.h"
     
 main :: IO ()
 main = Hspec.hspec $ do
-  Hspec.describe "copy haskell implementation" $ do
+  Hspec.describe "BLAS haskell implementation" $ do
     Hspec.it "calling readAndSum: helping understand monadic properties" $ property $ prop_readAndSum
     Hspec.it "copyM should compare exactly to inline-c cblas_dcopyW" $ property $ prop_copyM
+    Hspec.it "axpyM should compare exactly to inline-c cblas_daxpyW" $ property $ prop_axpyM
     
 readAndSumW :: Int -> IO (Int)
 readAndSumW n = do
@@ -43,22 +44,22 @@ prop_readAndSum n = monadicIO $ do
 -- need special arbitrary instance
 -- to make the inc, n, vectors sizes
 -- work out
-data CopyArgs a = CopyArgs Int [a] Int [a] Int
+data BlasArgs a = BlasArgs Int [a] Int [a] Int
                 deriving (Eq, Show, Generic)
 
-instance (Arbitrary a) => Arbitrary (CopyArgs a) where
+instance (Arbitrary a) => Arbitrary (BlasArgs a) where
   arbitrary = do
     Positive n <- arbitrary
     Positive incx <- arbitrary
     Positive incy <- arbitrary
     xs <- vector (n*incx)
     ys <- vector (n*incy)
-    return $ CopyArgs n xs incx ys incy
+    return $ BlasArgs n xs incx ys incy
     
   shrink = genericShrink
 
-prop_copyM :: CopyArgs Double -> Property
-prop_copyM (CopyArgs n xs incx ys incy) = monadicIO $ do
+prop_copyM :: BlasArgs Double -> Property
+prop_copyM (BlasArgs n xs incx ys incy) = monadicIO $ do
   -- expected uses the CBLAS implementation via inline-c
   expected <- run $ do
     let expected' = VS.fromList (coerce ys)
@@ -86,7 +87,6 @@ prop_copyM (CopyArgs n xs incx ys incy) = monadicIO $ do
   assert $ and $ zipWith (\a e -> a == coerce e) ass ess
   
 cblas_copyW :: CInt -> VS.Vector CDouble -> CInt -> VS.Vector CDouble -> CInt -> IO ()
-cblas_copyW n _  incx _  incy | n <= 0 || incx <= 0 || incy <= 0 = return ()
 cblas_copyW n dx incx dy incy = do
   [C.block| void
    {
@@ -100,12 +100,46 @@ cblas_copyW n dx incx dy incy = do
    }
    |]
   
-     -- int n_ = $(int n');
-     -- dcopy___(
-     --     &n_,
-     --     $vec-ptr:(const double* dx),
-     --     $(int incx'),
-     --     $vec-ptr:(double* dy),
-     --     $(int incy')
-     --     );
+prop_axpyM :: BlasArgs Double -> Double -> Property
+prop_axpyM (BlasArgs n xs incx ys incy) da = monadicIO $ do
+  -- expected uses the CBLAS implementation via inline-c
+  expected <- run $ do
+    let expected' = VS.fromList (coerce ys)
+        xs' = VS.fromList (coerce xs)
+        n' = fromIntegral n
+        incx' = fromIntegral incx
+        incy' = fromIntegral incy
+        da' = coerce da
+    cblas_axpyW n' da' xs' incx' expected' incy'
+    return expected'
+    
+  -- actual calls the monadic haskell implementation directly
+  actual <- run $ do
+    let xs' = VS.fromList xs
+    actual' <- VS.thaw $ VS.fromList ys
+    M.axpyM n da xs' incx actual' incy
+    VS.freeze actual'
 
+  -- invariant: same size as ys always
+  assert (length ys == VS.length actual)
+  assert (length ys == VS.length expected)
+
+  -- invariant: both methods give same answer
+  let ass = VS.toList actual
+      ess = VS.toList expected
+  assert $ and $ zipWith (\a e -> a == coerce e) ass ess
+
+cblas_axpyW :: CInt -> CDouble -> VS.Vector CDouble -> CInt -> VS.Vector CDouble -> CInt -> IO ()
+cblas_axpyW n da dx incx dy incy = do
+  [C.block| void
+   {
+     cblas_daxpy(
+         $(int n),
+         $(double da),
+         $vec-ptr:(double* dx),
+         $(int incx),
+         $vec-ptr:(double* dy),
+         $(int incy)
+         );
+   }
+   |]
