@@ -91,11 +91,11 @@ cblas_copyW n dx incx dy incy = do
   [C.block| void
    {
      cblas_dcopy(
-         $(int n),
-         $vec-ptr:(double* dx),
-         $(int incx),
+         $(const int n),
+         $vec-ptr:(const double* dx),
+         $(const int incx),
          $vec-ptr:(double* dy),
-         $(int incy)
+         $(const int incy)
          );
    }
    |]
@@ -134,12 +134,12 @@ cblas_axpyW n da dx incx dy incy = do
   [C.block| void
    {
      cblas_daxpy(
-         $(int n),
-         $(double da),
-         $vec-ptr:(double* dx),
-         $(int incx),
+         $(const int n),
+         $(const double da),
+         $vec-ptr:(const double* dx),
+         $(const int incx),
          $vec-ptr:(double* dy),
-         $(int incy)
+         $(const int incy)
          );
    }
    |]
