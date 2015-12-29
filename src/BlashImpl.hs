@@ -75,7 +75,7 @@ axpyM :: (PrimMonad m,
           -> mv (PrimState m) a
           -> Inc
           -> m ()
-axpyM  n _ _ _ _ _ | n <= 0 = return ()
+axpyM n da _ _ _ _ | n <= 0 || da == fZERO = return ()
 axpyM n da dx incx dy incy = do
   dx' <- V.thaw dx
   let
