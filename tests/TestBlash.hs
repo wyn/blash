@@ -9,12 +9,15 @@ import qualified Data.Vector.Storable as VS
 import           Foreign.C.Types
 import           Data.Monoid ((<>))
 import qualified Test.Hspec as Hspec
-import           Test.QuickCheck
+import           Test.Hspec.QuickCheck ()
+import           Test.QuickCheck (vector, genericShrink, Arbitrary(..), Positive(..), NonZero(..))
+import           Test.QuickCheck.Property (expect, property, Property)
 import           Test.QuickCheck.Monadic
+import           Test.QuickCheck.Assertions ((?~==))  -- approx equality
 import           GHC.Generics (Generic)
 
 import qualified Blash as B
-import qualified BlashImpl as M
+import qualified BlashImpl as BI
 
 
 C.context (C.baseCtx <> C.vecCtx)
@@ -29,9 +32,10 @@ main :: IO ()
 main = Hspec.hspec $ do
   Hspec.describe "BLAS haskell implementation" $ do
     Hspec.it "calling readAndSum: helping understand monadic quickcheck" $ property $ prop_readAndSum
-    Hspec.it "copyM should compare exactly to inline-c cblas_dcopyW" $ property $ prop_copyM
-    Hspec.it "axpyM should compare exactly to inline-c cblas_daxpyW" $ property $ prop_axpyM
-    Hspec.it "dot product should compare exactly to inline-c cblas_ddotW" $ property $ prop_dot
+    Hspec.it "BlasArgs should have invarient that vector length == n*inc for x & y" $ property $ prop_blasargs
+    Hspec.it "copyM should compare to inline-c cblas_dcopyW" $ property $ prop_copyM
+    Hspec.it "axpyM should compare to inline-c cblas_daxpyW" $ property $ prop_axpyM
+    Hspec.it "dot product should compare to inline-c cblas_ddotW" $ property $ prop_dot
     
 readAndSumW :: Int -> IO (Int)
 readAndSumW n = do
@@ -48,14 +52,16 @@ instance Arbitrary TArgs where
     return $ TArgs n' (n+1)
     
   shrink = genericShrink
-    
+
+
 prop_readAndSum :: TArgs -> Property
 prop_readAndSum (TArgs (Positive n) _) = monadicIO $ do
   x <- run $ readAndSumW (n+1)
-  assert (x == (sum [1..n]))
+  assert $ expect $ x ?~== (sum [1..n])
+
 
 -- need special arbitrary instance to make the inc, n, vectors sizes work out  
-data BlasArgs a = BlasArgs (Positive M.Size) [a] (NonZero M.Inc) [a] (NonZero M.Inc)
+data BlasArgs a = BlasArgs (Positive BI.Size) [a] (NonZero BI.Inc) [a] (NonZero BI.Inc)
                 deriving (Eq, Show, Generic)
 
 instance (Arbitrary a) => Arbitrary (BlasArgs a) where
@@ -71,15 +77,21 @@ instance (Arbitrary a) => Arbitrary (BlasArgs a) where
     n''@(Positive n') <- shrink n
     incx''@(NonZero incx') <- shrink incx
     incy''@(NonZero incy') <- shrink incy
+    -- relying on fact that shrink for n and inc
+    -- means get smaller number
     let xs'' = take (n'*(abs incx')) xs
         ys'' = take (n'*(abs incy')) ys
     return (BlasArgs n'' xs'' incx'' ys'' incy'')
 
 
+prop_blasargs :: BlasArgs Double -> Property
+prop_blasargs (BlasArgs (Positive n) xs (NonZero incx) ys (NonZero incy)) = monadicIO $ do
+  assert $ (n*(abs incx)) == length xs
+  assert $ (n*(abs incy)) == length ys
+
+  
 prop_copyM :: BlasArgs Double -> Property
 prop_copyM (BlasArgs (Positive n) xs (NonZero incx) ys (NonZero incy)) = monadicIO $ do
-  assert $ ((n*incx) == length xs) || (((-n)*incx) == length xs)
-  assert $ ((n*incy) == length ys) || (((-n)*incy) == length ys)
   -- expected uses the CBLAS implementation via inline-c
   expected <- run $ do
     let expected' = VS.fromList (coerce ys)
@@ -94,7 +106,7 @@ prop_copyM (BlasArgs (Positive n) xs (NonZero incx) ys (NonZero incy)) = monadic
   actual <- run $ do
     let xs' = VS.fromList xs
     actual' <- VS.thaw $ VS.fromList ys
-    M.copyM n xs' incx actual' incy
+    BI.copyM n xs' incx actual' incy
     VS.freeze actual'
 
   -- invariant: same size as ys always
@@ -104,7 +116,7 @@ prop_copyM (BlasArgs (Positive n) xs (NonZero incx) ys (NonZero incy)) = monadic
   -- invariant: both methods give same answer
   let ass = VS.toList actual
       ess = VS.toList expected
-  assert $ and $ zipWith (\a e -> a == coerce e) ass ess
+  assert $ and $ zipWith (\a e -> expect $ a ?~== coerce e) ass ess
   
 cblas_copyW :: CInt -> VS.Vector CDouble -> CInt -> VS.Vector CDouble -> CInt -> IO ()
 cblas_copyW n dx incx dy incy = do
@@ -137,7 +149,7 @@ prop_axpyM (BlasArgs (Positive n) xs (NonZero incx) ys (NonZero incy)) da = mona
   actual <- run $ do
     let xs' = VS.fromList xs
     actual' <- VS.thaw $ VS.fromList ys
-    M.axpyM n da xs' incx actual' incy
+    BI.axpyM n da xs' incx actual' incy
     VS.freeze actual'
 
   -- invariant: same size as ys always
@@ -147,7 +159,7 @@ prop_axpyM (BlasArgs (Positive n) xs (NonZero incx) ys (NonZero incy)) da = mona
   -- invariant: both methods give same answer
   let ass = VS.toList actual
       ess = VS.toList expected
-  assert $ and $ zipWith (\a e -> a == coerce e) ass ess
+  assert $ and $ zipWith (\a e -> expect $ a ?~== coerce e) ass ess
 
 cblas_axpyW :: CInt -> CDouble -> VS.Vector CDouble -> CInt -> VS.Vector CDouble -> CInt -> IO ()
 cblas_axpyW n da dx incx dy incy = do
@@ -184,7 +196,7 @@ prop_dot (BlasArgs (Positive n) xs (NonZero incx) ys (NonZero incy)) = monadicIO
   -- run $ putStrLn $ "actual:   " ++ show actual
     
   -- invariant: both methods give same answer
-  assert $ abs (actual - (coerce expected)) <= 1.0e-6
+  assert $ expect $ actual ?~== coerce expected
     where 
       -- actual calls the haskell implementation directly
       actual = B.dot n (VS.fromList xs) incx (VS.fromList ys) incy
