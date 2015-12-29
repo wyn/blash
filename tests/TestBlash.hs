@@ -36,6 +36,7 @@ main = Hspec.hspec $ do
     Hspec.it "copyM should compare to inline-c cblas_dcopyW" $ property $ prop_copyM
     Hspec.it "axpyM should compare to inline-c cblas_daxpyW" $ property $ prop_axpyM
     Hspec.it "dot product should compare to inline-c cblas_ddotW" $ property $ prop_dot
+    Hspec.it "nrm2 should compare to inline-c cblas_dnrm2W" $ property $ prop_nrm2
     
 readAndSumW :: Int -> IO (Int)
 readAndSumW n = do
@@ -118,6 +119,7 @@ prop_copyM (BlasArgs (Positive n) xs (NonZero incx) ys (NonZero incy)) = monadic
       ess = VS.toList expected
   assert $ and $ zipWith (\a e -> expect $ a ?~== coerce e) ass ess
   
+
 cblas_copyW :: CInt -> VS.Vector CDouble -> CInt -> VS.Vector CDouble -> CInt -> IO ()
 cblas_copyW n dx incx dy incy = do
   [C.block| void
@@ -131,6 +133,7 @@ cblas_copyW n dx incx dy incy = do
          );
    }
    |]
+
   
 prop_axpyM :: BlasArgs Double -> Double -> Property
 prop_axpyM (BlasArgs (Positive n) xs (NonZero incx) ys (NonZero incy)) da = monadicIO $ do
@@ -161,6 +164,7 @@ prop_axpyM (BlasArgs (Positive n) xs (NonZero incx) ys (NonZero incy)) da = mona
       ess = VS.toList expected
   assert $ and $ zipWith (\a e -> expect $ a ?~== coerce e) ass ess
 
+
 cblas_axpyW :: CInt -> CDouble -> VS.Vector CDouble -> CInt -> VS.Vector CDouble -> CInt -> IO ()
 cblas_axpyW n da dx incx dy incy = do
   [C.block| void
@@ -175,6 +179,8 @@ cblas_axpyW n da dx incx dy incy = do
          );
    }
    |]
+
+
 prop_dot :: BlasArgs Double -> Property
 prop_dot (BlasArgs (Positive n) xs (NonZero incx) ys (NonZero incy)) = monadicIO $ do
   -- expected uses the CBLAS implementation via inline-c
@@ -201,6 +207,7 @@ prop_dot (BlasArgs (Positive n) xs (NonZero incx) ys (NonZero incy)) = monadicIO
       -- actual calls the haskell implementation directly
       actual = B.dot n (VS.fromList xs) incx (VS.fromList ys) incy
 
+
 cblas_dotW :: CInt -> VS.Vector CDouble -> CInt -> VS.Vector CDouble -> CInt -> IO (CDouble)
 cblas_dotW n dx incx dy incy = do
   [C.block| double
@@ -214,3 +221,35 @@ cblas_dotW n dx incx dy incy = do
          );
    }
    |]
+
+
+prop_nrm2 :: BlasArgs Double -> Property
+prop_nrm2 (BlasArgs (Positive n) xs (NonZero incx) _ _) = monadicIO $ do
+  expected <- run $ do
+    let xs' = VS.fromList (coerce xs)
+        n' = fromIntegral n
+        incx' = fromIntegral incx
+    cblas_nrm2W n' xs' incx'
+
+  -- invariant: both methods give same answer
+  assert $ expect $ actual ?~== coerce expected
+    where 
+      -- actual calls the haskell implementation directly
+      actual = B.nrm2 n (VS.fromList xs) incx
+
+
+cblas_nrm2W :: CInt -> VS.Vector CDouble -> CInt -> IO (CDouble)
+cblas_nrm2W n dx incx = do
+  [C.block| double
+   {
+     return cblas_dnrm2(
+         $(const int n),
+         $vec-ptr:(const double* dx),
+         $(const int incx)
+         );
+   }
+   |]
+
+
+
+-- --
