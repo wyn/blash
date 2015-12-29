@@ -28,13 +28,30 @@ copyM :: (PrimMonad m,
           -> mv (PrimState m) a
           -> Inc
           -> m ()
-copyM n _  incx _  incy | n <= 0 || incx <= 0 || incy <= 0 = return ()
+copyM n _ _ _ _ | n <= 0 = return ()
 copyM n dx incx dy incy = do
+  -- Old fortran code - need to do
+  -- haskell_index = fortran_index-1
+  --
+  -- IX = 1
+  -- IY = 1
+  -- IF (INCX.LT.0) IX = (-N+1)*INCX + 1
+  -- IF (INCY.LT.0) IY = (-N+1)*INCY + 1
+  -- DO I = 1,N
+  --    DY(IY) = DX(IX)
+  --    IX = IX + INCX
+  --    IY = IY + INCY
+  -- END DO
   dx' <- V.thaw dx
+  -- [0..(n-1)] is inclusive of end points
+  -- ie [0..(4-1)] == [0,1,2,3]
+  let
+    ix' = if incx >= 0 then 0 else (1-n)*incx
+    iy' = if incy >= 0 then 0 else (1-n)*incy
   forM_ [0..(n-1)] $ \i -> do
     let 
-      iy = i * incy
-      ix = i * incx
+      ix = ix' + i * incx
+      iy = iy' + i * incy
     dx_ix <- M.read dx' ix
     M.write dy iy dx_ix
 
@@ -53,62 +70,20 @@ axpyM :: (PrimMonad m,
           -> mv (PrimState m) a
           -> Inc
           -> m ()
-axpyM n da _  incx _  incy | n <= 0 || incx <= 0 || incy <= 0 || da == fZERO = return ()
+axpyM  n _ _ _ _ _ | n <= 0 = return ()
 axpyM n da dx incx dy incy = do
   dx' <- V.thaw dx
+  let
+    ix' = if incx >= 0 then 0 else (1-n)*incx
+    iy' = if incy >= 0 then 0 else (1-n)*incy
   forM_ [0..(n-1)] $ \i -> do
     let 
-      iy = i * incy
-      ix = i * incx
+      ix = ix' + i * incx
+      iy = iy' + i * incy
     dy_iy <- M.read dy iy
     dx_ix <- M.read dx' ix
     M.write dy iy $ dy_iy + (da * dx_ix)
 
-
--- -- /* dot product dx dot dy. */
--- ddot :: (V.Unbox a, Eq a, Floating a)
---         => Size
---         -> V.Vector a
---         -> Inc
---         -> V.Vector a
---         -> Inc
---         -> a
--- ddot n dx incx dy incy
---   | n <= 0    = fZERO
---   | otherwise = V.foldl' (+) fZERO $ V.zipWith (*) dx' dy'
---   where
---     dx' = stride n dx incx
---     dy' = stride n dy incy
-
--- stride :: (V.Unbox a)
---           => Size
---           -> V.Vector a
---           -> Inc
---           -> V.Vector a
--- stride n vec inc = V.take n $ V.ifilter (incrementer inc) vec
---   where 
---     incrementer inc' i _ = 0 == (i `mod` inc')
-
-
--- -- /* compute the L2 norm of array DX of length N, stride INCX */
--- dnrm2 :: (V.Unbox a, Eq a, Ord a, Floating a)
---          => Size
---          -> V.Vector a
---          -> Inc
---          -> a
--- dnrm2 n dx incx =
---   let dx' = stride n dx incx
---       xmax = V.maximum $ V.map abs dx'
---   in 
---     case xmax == fZERO of
---     True -> fZERO
---     False ->
---       let scale = 1.0 / xmax
---           scaled_dx' = V.map (* scale) dx'
---           n' = V.length scaled_dx'
---           scaled_drnm2 = sqrt $ ddot n' scaled_dx' 1 scaled_dx' 1
---       in
---         xmax * scaled_drnm2
 
 
 
