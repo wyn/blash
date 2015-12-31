@@ -3,3 +3,4 @@ src/Main.c
 tests/Test*.c
 *.o
 tests/OpenBLAS/
+tests/blas/
