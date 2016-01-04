@@ -66,6 +66,30 @@ scalM n da dx incx = do
     M.write dx ix' (da * dx_ix)
 
 
+-- /*     SWAPS VECTOR, X, AND VECTOR, Y, with the given increments */
+swapM :: (PrimMonad m,
+          M.MVector mv a
+         )
+          => Size
+          -> mv (PrimState m) a
+          -> Inc
+          -> mv (PrimState m) a
+          -> Inc
+          -> m ()
+swapM n _ _ _ _ | n <= 0 = return ()
+swapM n dx incx dy incy = do
+  let
+    ix = stride n incx
+    iy = stride n incy 
+  forM_ [0..(n-1)] $ \i -> do
+    let ix' = ix i
+        iy' = iy i
+    dx_ix <- M.read dx ix'
+    dy_iy <- M.read dy iy'
+    M.write dx ix' dy_iy
+    M.write dy iy' dx_ix
+
+
 -- /*     COPIES A VECTOR, X, TO A VECTOR, Y, with the given increments */
 copyM :: (PrimMonad m,
           M.MVector mv a,

@@ -38,6 +38,7 @@ main = Hspec.hspec $ do
     Hspec.it "asum should compare to inline-c cblas_dasumW" $ property $ prop_asum
     Hspec.it "iamax should compare to inline-c cblas_damaxW" $ property $ prop_iamax
     Hspec.it "scalM should compare to inline-c cblas_scalW" $ property $ prop_scalM
+    Hspec.it "swapM should compare to inline-c cblas_swapW" $ property $ prop_swapM
   
 readAndSumW :: Int -> IO (Int)
 readAndSumW n = do
@@ -354,6 +355,55 @@ cblas_scalW n da dx incx = do
          $(const double da),
          $vec-ptr:(double* dx),
          $(const int incx)
+         );
+   }
+   |]
+
+  
+-- --
+prop_swapM :: BlasArgs Double -> Property
+prop_swapM (BlasArgs (Positive n) xs (NonZero incx) ys (NonZero incy)) = monadicIO $ do
+  -- expected uses the CBLAS implementation via inline-c
+  (expectedXS, expectedYS) <- run $ do
+    let
+      expectedXS' = VS.fromList (coerce xs)
+      expectedYS' = VS.fromList (coerce ys)
+      n' = fromIntegral n
+      incx' = fromIntegral incx
+      incy' = fromIntegral incy
+    cblas_swapW n' expectedXS' incx' expectedYS' incy'
+    return (expectedXS', expectedYS')
+    
+  -- actual calls the monadic haskell implementation directly
+  (actualXS, actualYS) <- run $ do
+    actualXS' <- VS.thaw $ VS.fromList xs
+    actualYS' <- VS.thaw $ VS.fromList ys
+    BI.swapM n actualXS' incx actualYS' incy
+    actualXS'' <- VS.freeze actualXS'
+    actualYS'' <- VS.freeze actualYS'
+    return (actualXS'', actualYS'')
+    
+  -- invariant: same size as ys always
+  assert (length xs == VS.length actualXS)
+  assert (length xs == VS.length expectedXS)
+  assert (length ys == VS.length actualYS)
+  assert (length ys == VS.length expectedYS)
+
+  -- invariant: both methods give same answer
+  assert $ and $ zipWith (\a e -> a ~== coerce e) (VS.toList actualXS) (VS.toList expectedXS)
+  assert $ and $ zipWith (\a e -> a ~== coerce e) (VS.toList actualYS) (VS.toList expectedYS)
+  
+
+cblas_swapW :: CInt -> VS.Vector CDouble -> CInt -> VS.Vector CDouble -> CInt -> IO ()
+cblas_swapW n dx incx dy incy = do
+  [C.block| void
+   {
+     cblas_dswap(
+         $(const int n),
+         $vec-ptr:(double* dx),
+         $(const int incx),
+         $vec-ptr:(double* dy),
+         $(const int incy)
          );
    }
    |]
