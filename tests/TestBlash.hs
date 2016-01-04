@@ -36,6 +36,7 @@ main = Hspec.hspec $ do
     Hspec.it "dot product should compare to inline-c cblas_ddotW" $ property $ prop_dot
     Hspec.it "nrm2 should compare to inline-c cblas_dnrm2W" $ property $ prop_nrm2
     Hspec.it "asum should compare to inline-c cblas_dasumW" $ property $ prop_asum
+    Hspec.it "iamax should compare to inline-c cblas_damaxW" $ property $ prop_iamax
 
   
 readAndSumW :: Int -> IO (Int)
@@ -267,7 +268,6 @@ prop_asum (BlasArgs (Positive n) xs (NonZero incx) _ _) = monadicIO $ do
   -- run $ putStrLn $ "expected:   " ++ show expected
   -- run $ putStrLn $ "actual:   " ++ show actual
   -- -- invariant: both methods give same answer
-  -- assert $ abs (actual - coerce expected) < 1.0e-6
   assert $ actual ~== coerce expected
     where 
       -- actual calls the haskell implementation directly
@@ -279,6 +279,35 @@ cblas_asumW n dx incx = do
   [C.block| double
    {
      return cblas_dasum(
+         $(const int n),
+         $vec-ptr:(const double* dx),
+         $(const int incx)
+         );
+   }
+   |]
+
+
+-- --
+prop_iamax :: BlasArgs Double -> Property
+prop_iamax (BlasArgs (Positive n) xs (NonZero incx) _ _) = monadicIO $ do
+  expected <- run $ do
+    let xs' = VS.fromList (coerce xs)
+        n' = fromIntegral n
+        incx' = fromIntegral incx
+    cblas_iamaxW n' xs' incx'
+
+  -- -- invariant: both methods give same answer
+  assert $ actual == expected
+    where 
+      -- actual calls the haskell implementation directly
+      actual = fromIntegral $ B.iamax n (VS.fromList xs) incx
+
+
+cblas_iamaxW :: CInt -> VS.Vector CDouble -> CInt -> IO (CInt)
+cblas_iamaxW n dx incx = do
+  [C.block| int
+   {
+     return cblas_idamax(
          $(const int n),
          $vec-ptr:(const double* dx),
          $(const int incx)

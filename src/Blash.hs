@@ -2,7 +2,7 @@ module Blash where
 
 import qualified Data.Vector.Generic as V
 import Data.Vector.Generic ((!))
-import BlashImpl (fZERO, stride, isample, Size, Inc, copyM, axpyM)
+import BlashImpl (fZERO, stride, isample, map_reduce, Size, Inc, Index, copyM, axpyM)
 
 main :: IO ()
 main = undefined
@@ -19,7 +19,7 @@ copy n dx incx dy incy = V.modify modifier dy
     modifier ys = copyM n dx incx ys incy
 
 
-axpy :: (V.Vector v a, Eq a, Floating a)
+axpy :: (V.Vector v a, Eq a, Num a)
          => Size
          -> a
          -> v a
@@ -32,7 +32,7 @@ axpy n da dx incx dy incy = V.modify modifier dy
     modifier ys = axpyM n da dx incx ys incy
 
 -- /* dot product dx dot dy. */
-dot :: (V.Vector v a, Eq a, Floating a)
+dot :: (V.Vector v a, Eq a, Num a)
         => Size
         -> v a
         -> Inc
@@ -49,6 +49,7 @@ dot n dx incx dy incy = sum prods
               
 
 -- /* compute the L2 norm of array DX of length N, stride INCX */
+-- TODO should really be (Num a) - or split between Complex and Real
 nrm2 :: (V.Vector v a, Eq a, Ord a, Floating a)
         => Size
         -> v a
@@ -71,14 +72,17 @@ nrm2 n dx incx =
         xmax * scaled_drnm2
 
 -- DASUM takes the sum of the absolute values.
-asum :: (V.Vector v a, Eq a, Ord a, Floating a)
+asum :: (V.Vector v a, Eq a, Ord a, Num a)
         => Size
         -> v a
         -> Inc
         -> a
-asum n _  incx | n <= 0 || incx <= 0 = fZERO
-asum n dx incx =
-  let
-    dx'  = isample n dx incx
-  in
-    V.sum $ V.map abs dx'
+asum = map_reduce abs V.sum         
+
+-- DAMAX takes the max of the absolute values.
+iamax :: (V.Vector v a, Eq a, Ord a, Num a)
+        => Size
+        -> v a
+        -> Inc
+        -> Index
+iamax = map_reduce abs V.maxIndex

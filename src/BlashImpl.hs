@@ -11,9 +11,10 @@ import qualified Data.Vector.Generic.Mutable as M
 
 
 type Inc = Int
+type Index = Int
 type Size = Int -- this is not the length of the vector !!
 
-fZERO :: (Floating a) => a
+fZERO :: (Num a) => a
 fZERO = 0
 
 -- /********************************* BLAS1 routines *************************/
@@ -76,7 +77,7 @@ copyM n dx incx dy incy = do
 axpyM :: (PrimMonad m,
           M.MVector mv a,
           V.Vector v a,
-          Floating a,
+          Num a,
           Eq a
          )
           => Size
@@ -100,3 +101,16 @@ axpyM n da dx incx dy incy = do
     M.write dy iy' (dy_iy + (da * dx_ix))
 
 
+map_reduce :: (V.Vector v a, V.Vector v b, Num c)
+              => (a -> b)
+              -> (v b -> c)
+              -> Size
+              -> v a
+              -> Inc
+              -> c
+map_reduce _ _ n _  incx | n <= 0 || incx <= 0 = fZERO
+map_reduce mapper reducer n dx incx =
+  let
+    dx'  = isample n dx incx
+  in
+    reducer $ V.map mapper dx'
