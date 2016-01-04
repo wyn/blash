@@ -32,7 +32,8 @@ test-suite test-blash
                      , inline-c
                      , hspec >= 2
                      , QuickCheck
-                     , quickcheck-assertions >= 0.2.0
+                     , ieee 
+--                     , quickcheck-assertions >= 0.2.0
                      , process
   default-language:    Haskell2010
 

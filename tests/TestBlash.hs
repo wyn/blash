@@ -9,13 +9,11 @@ import qualified Data.Vector.Storable as VS
 import           Foreign.C.Types
 import           Data.Monoid ((<>))
 import qualified Test.Hspec as Hspec
-import           Test.Hspec.QuickCheck ()
 import           Test.QuickCheck (vector, genericShrink, Arbitrary(..), Positive(..), NonZero(..))
-import           Test.QuickCheck.Property (expect, property, Property)
+import           Test.QuickCheck.Property (property, Property)
 import           Test.QuickCheck.Monadic
-import           Test.QuickCheck.Assertions ((?~==))  -- approx equality
 import           GHC.Generics (Generic)
-
+import           Data.AEq 
 import qualified Blash as B
 import qualified BlashImpl as BI
 
@@ -37,7 +35,9 @@ main = Hspec.hspec $ do
     Hspec.it "axpyM should compare to inline-c cblas_daxpyW" $ property $ prop_axpyM
     Hspec.it "dot product should compare to inline-c cblas_ddotW" $ property $ prop_dot
     Hspec.it "nrm2 should compare to inline-c cblas_dnrm2W" $ property $ prop_nrm2
-    
+    Hspec.it "asum should compare to inline-c cblas_dasumW" $ property $ prop_asum
+
+  
 readAndSumW :: Int -> IO (Int)
 readAndSumW n = do
   let n' = fromIntegral n
@@ -58,12 +58,12 @@ instance Arbitrary TArgs where
 prop_readAndSum :: TArgs -> Property
 prop_readAndSum (TArgs (Positive n) _) = monadicIO $ do
   x <- run $ readAndSumW (n+1)
-  assert $ expect $ x ?~== (sum [1..n])
+  assert $ x ~== (sum [1..n])
 
 
 -- need special arbitrary instance to make the inc, n, vectors sizes work out  
 data BlasArgs a = BlasArgs (Positive BI.Size) [a] (NonZero BI.Inc) [a] (NonZero BI.Inc)
-                deriving (Eq, Show, Generic)
+                deriving (Eq, Show)
 
 instance (Arbitrary a) => Arbitrary (BlasArgs a) where
   arbitrary = do
@@ -117,7 +117,7 @@ prop_copyM (BlasArgs (Positive n) xs (NonZero incx) ys (NonZero incy)) = monadic
   -- invariant: both methods give same answer
   let ass = VS.toList actual
       ess = VS.toList expected
-  assert $ and $ zipWith (\a e -> expect $ a ?~== coerce e) ass ess
+  assert $ and $ zipWith (\a e -> a ~== coerce e) ass ess
   
 
 cblas_copyW :: CInt -> VS.Vector CDouble -> CInt -> VS.Vector CDouble -> CInt -> IO ()
@@ -162,7 +162,7 @@ prop_axpyM (BlasArgs (Positive n) xs (NonZero incx) ys (NonZero incy)) da = mona
   -- invariant: both methods give same answer
   let ass = VS.toList actual
       ess = VS.toList expected
-  assert $ and $ zipWith (\a e -> expect $ a ?~== coerce e) ass ess
+  assert $ and $ zipWith (\a e -> a ~== coerce e) ass ess
 
 
 cblas_axpyW :: CInt -> CDouble -> VS.Vector CDouble -> CInt -> VS.Vector CDouble -> CInt -> IO ()
@@ -202,7 +202,7 @@ prop_dot (BlasArgs (Positive n) xs (NonZero incx) ys (NonZero incy)) = monadicIO
   -- run $ putStrLn $ "actual:   " ++ show actual
     
   -- invariant: both methods give same answer
-  assert $ expect $ actual ?~== coerce expected
+  assert $ actual ~== coerce expected
     where 
       -- actual calls the haskell implementation directly
       actual = B.dot n (VS.fromList xs) incx (VS.fromList ys) incy
@@ -232,7 +232,7 @@ prop_nrm2 (BlasArgs (Positive n) xs (NonZero incx) _ _) = monadicIO $ do
     cblas_nrm2W n' xs' incx'
 
   -- invariant: both methods give same answer
-  assert $ expect $ actual ?~== coerce expected
+  assert $ actual ~== coerce expected
     where 
       -- actual calls the haskell implementation directly
       actual = B.nrm2 n (VS.fromList xs) incx
@@ -243,6 +243,42 @@ cblas_nrm2W n dx incx = do
   [C.block| double
    {
      return cblas_dnrm2(
+         $(const int n),
+         $vec-ptr:(const double* dx),
+         $(const int incx)
+         );
+   }
+   |]
+
+
+
+-- --
+prop_asum :: BlasArgs Double -> Property
+prop_asum (BlasArgs (Positive n) xs (NonZero incx) _ _) = monadicIO $ do
+  expected <- run $ do
+    let xs' = VS.fromList (coerce xs)
+        n' = fromIntegral n
+        incx' = fromIntegral incx
+    cblas_asumW n' xs' incx'
+
+  -- run $ putStrLn $ "n: " ++ show n
+  -- run $ putStrLn $ "xs:   " ++ show xs
+  -- run $ putStrLn $ "incx: " ++ show incx
+  -- run $ putStrLn $ "expected:   " ++ show expected
+  -- run $ putStrLn $ "actual:   " ++ show actual
+  -- -- invariant: both methods give same answer
+  -- assert $ abs (actual - coerce expected) < 1.0e-6
+  assert $ actual ~== coerce expected
+    where 
+      -- actual calls the haskell implementation directly
+      actual = B.asum n (VS.fromList xs) incx
+
+
+cblas_asumW :: CInt -> VS.Vector CDouble -> CInt -> IO (CDouble)
+cblas_asumW n dx incx = do
+  [C.block| double
+   {
+     return cblas_dasum(
          $(const int n),
          $vec-ptr:(const double* dx),
          $(const int incx)

@@ -5,6 +5,7 @@ module BlashImpl where
 
 import Control.Monad (forM_)
 import Control.Monad.Primitive (PrimMonad, PrimState)
+import Data.Vector.Generic ( (!) )
 import qualified Data.Vector.Generic as V
 import qualified Data.Vector.Generic.Mutable as M
 
@@ -34,6 +35,16 @@ stride n inc =
   -- END DO
   let ix = if inc >= 0 then 0 else (1-n)*inc in
   \i -> ix + i * inc
+
+
+isample :: (V.Vector v a
+           )
+           => Size
+           -> v a
+           -> Inc
+           -> v a
+isample n dx inc = let ix = stride n inc in
+  V.fromList $ (flip map) [0..(n-1)] (\i -> dx ! ix i)
 
 
 -- 

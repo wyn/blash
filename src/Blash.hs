@@ -2,7 +2,7 @@ module Blash where
 
 import qualified Data.Vector.Generic as V
 import Data.Vector.Generic ((!))
-import BlashImpl (fZERO, stride, Size, Inc, copyM, axpyM)
+import BlashImpl (fZERO, stride, isample, Size, Inc, copyM, axpyM)
 
 main :: IO ()
 main = undefined
@@ -57,8 +57,7 @@ nrm2 :: (V.Vector v a, Eq a, Ord a, Floating a)
 nrm2 n _  incx | n <= 0 || incx <= 0 = fZERO
 nrm2 n dx _ | n == 1 = abs $ dx ! 0
 nrm2 n dx incx =
-  let ix = stride n incx
-      dx' = V.ifilter (\i _ -> i == ix i) dx
+  let dx' = isample n dx incx
       xmax = V.maximum $ V.map abs dx'
   in 
     case xmax == fZERO of
@@ -70,3 +69,16 @@ nrm2 n dx incx =
           scaled_drnm2 = sqrt $ dot n' scaled_dx' 1 scaled_dx' 1
       in
         xmax * scaled_drnm2
+
+-- DASUM takes the sum of the absolute values.
+asum :: (V.Vector v a, Eq a, Ord a, Floating a)
+        => Size
+        -> v a
+        -> Inc
+        -> a
+asum n _  incx | n <= 0 || incx <= 0 = fZERO
+asum n dx incx =
+  let
+    dx'  = isample n dx incx
+  in
+    V.sum $ V.map abs dx'
