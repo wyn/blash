@@ -37,7 +37,7 @@ main = Hspec.hspec $ do
     Hspec.it "nrm2 should compare to inline-c cblas_dnrm2W" $ property $ prop_nrm2
     Hspec.it "asum should compare to inline-c cblas_dasumW" $ property $ prop_asum
     Hspec.it "iamax should compare to inline-c cblas_damaxW" $ property $ prop_iamax
-
+    Hspec.it "scalM should compare to inline-c cblas_scalW" $ property $ prop_scalM
   
 readAndSumW :: Int -> IO (Int)
 readAndSumW n = do
@@ -317,4 +317,46 @@ cblas_iamaxW n dx incx = do
 
 
 
+-- --
+prop_scalM :: BlasArgs Double -> Double -> Property
+prop_scalM (BlasArgs (Positive n) xs (NonZero incx) _ _) da = monadicIO $ do
+  -- expected uses the CBLAS implementation via inline-c
+  expected <- run $ do
+    let expected' = VS.fromList (coerce xs)
+        da' = coerce da
+        n' = fromIntegral n
+        incx' = fromIntegral incx
+    cblas_scalW n' da' expected' incx' 
+    return expected'
+    
+  -- actual calls the monadic haskell implementation directly
+  actual <- run $ do
+    actual' <- VS.thaw $ VS.fromList xs
+    BI.scalM n da actual' incx
+    VS.freeze actual'
+
+  -- invariant: same size as ys always
+  assert (length xs == VS.length actual)
+  assert (length xs == VS.length expected)
+
+  -- invariant: both methods give same answer
+  let ass = VS.toList actual
+      ess = VS.toList expected
+  assert $ and $ zipWith (\a e -> a ~== coerce e) ass ess
+  
+
+cblas_scalW :: CInt -> CDouble -> VS.Vector CDouble -> CInt -> IO ()
+cblas_scalW n da dx incx = do
+  [C.block| void
+   {
+     cblas_dscal(
+         $(const int n),
+         $(const double da),
+         $vec-ptr:(double* dx),
+         $(const int incx)
+         );
+   }
+   |]
+
+  
 -- --

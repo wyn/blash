@@ -1,6 +1,3 @@
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TemplateHaskell #-}
-
 module BlashImpl where
 
 import Control.Monad (forM_)
@@ -49,6 +46,26 @@ isample n dx inc = let ix = stride n inc in
 
 
 -- 
+-- /*     SCALES A VECTOR, X, BY A CONSTANT
+scalM :: (Num a,
+          PrimMonad m,
+          M.MVector mv a
+         )
+         => Size
+         -> a
+         -> mv (PrimState m) a
+         -> Inc
+         -> m ()
+scalM n _ _ incx | n <= 0 || incx <= 0 = return ()
+scalM n da dx incx = do
+  let
+    ix = stride n incx
+  forM_ [0..(n-1)] $ \i -> do
+    let ix' = ix i
+    dx_ix <- M.read dx ix'
+    M.write dx ix' (da * dx_ix)
+
+
 -- /*     COPIES A VECTOR, X, TO A VECTOR, Y, with the given increments */
 copyM :: (PrimMonad m,
           M.MVector mv a,
@@ -74,11 +91,11 @@ copyM n dx incx dy incy = do
 
 
 -- /* CONSTANT TIMES A VECTOR PLUS A VECTOR. */
-axpyM :: (PrimMonad m,
-          M.MVector mv a,
-          V.Vector v a,
+axpyM :: (Ord a,
           Num a,
-          Eq a
+          PrimMonad m,
+          M.MVector mv a,
+          V.Vector v a
          )
           => Size
           -> a
