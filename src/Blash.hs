@@ -7,8 +7,6 @@ import Data.Vector.Generic ((!))
 import Data.Complex
 import BlashImpl (fZERO, stride, isample, map_reduce, Size, Inc, Index, copyM, axpyM)
 
-main :: IO ()
-main = undefined
 
 copy :: (V.Vector v a)
          => Size
