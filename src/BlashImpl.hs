@@ -155,3 +155,61 @@ map_reduce mapper reducer n dx incx =
     dx'  = isample n dx incx
   in
     reducer $ V.map mapper dx'
+
+-- prepare Givens rotation params
+rotg :: (Num a, Ord a, Floating a)
+        => a
+        -> a
+        -> (a,a,a,a)
+rotg da db = doRotG
+  where
+    abs_da = abs da
+    abs_db = abs db
+    scale = abs_da + abs_db
+    roe = if abs_da > abs_db then da else db
+    doRotG
+      | scale == fZERO = (0.0, 0.0, 1.0, 0.0)
+      | otherwise      = (da', db', cs', sn')
+      where
+        r' = (signum roe) * scale * (sqrt $ da2 + db2)
+        da2 = (da / scale) ** 2
+        db2 = (db / scale) ** 2
+        cs' = da / r'
+        sn' = db / r'
+        da' = r'
+        db' = calc_db
+        calc_db
+          | abs_db >= abs_da && cs' /= fZERO = 1.0 / cs'
+          | abs_db < abs_da                  = sn'
+          | otherwise                        = 1.0
+        
+-- /* Apply a plane rotation. */
+rotM :: (Ord a,
+         Num a,
+         PrimMonad m,
+         M.MVector mv a
+        )
+        => Size
+        -> mv (PrimState m) a
+        -> Inc
+        -> mv (PrimState m) a
+        -> Inc
+        -> a
+        -> a
+        -> m ()
+rotM n _ _ _ _ _ _ | n <= 0 = return ()
+rotM n dx incx dy incy c s = do
+  let
+    ix = stride n incx
+    iy = stride n incy
+  forM_ [0..(n-1)] $ \i -> do
+    let ix' = ix i
+        iy' = iy i
+    dy_iy <- M.read dy iy'
+    dx_ix <- M.read dx ix'
+    let tmp = c*dx_ix + s*dy_iy
+    M.write dy iy' (c*dy_iy - s*dx_ix)
+    M.write dx ix' tmp
+    
+
+
