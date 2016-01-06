@@ -8,8 +8,8 @@ import           Test.QuickCheck.Monadic
 import           Test.QuickCheck.Property (Property)
 import           Data.AEq 
 import qualified Blash as B
-import           TestBlashImpl(BlasArgs(..))
 import           OpenBLAS1
+import           TestBlashData
 
 
 prop_dot :: BlasArgs Double -> Property

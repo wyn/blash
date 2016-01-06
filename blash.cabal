@@ -27,6 +27,7 @@ test-suite test-blash
   hs-source-dirs:      tests
   exposed-modules:     TestBlash
                      , TestBlashImpl
+                     , TestBlashData
                      , OpenBLAS1
   main-is:             TestMain.hs
   build-depends:       base >=4.7 && <5

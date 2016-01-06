@@ -4,6 +4,7 @@ import Test.QuickCheck.Property (property)
 import qualified Test.Hspec as Hspec
 import TestBlash
 import TestBlashImpl
+import TestBlashData
 
 
 main :: IO ()
