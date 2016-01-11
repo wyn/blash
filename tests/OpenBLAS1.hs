@@ -131,8 +131,6 @@ cblas_asumW n dx incx = do
    |]
 
 
-
-
 cblas_iamaxW :: CInt -> VS.Vector CDouble -> CInt -> IO (CInt)
 cblas_iamaxW n dx incx = do
   [C.block| int
@@ -145,5 +143,13 @@ cblas_iamaxW n dx incx = do
    }
    |]
 
+cblas_rotgW :: VS.Vector CDouble -> IO ()
+cblas_rotgW dx = do
+  [C.block| void
+   {
+     double* v = $vec-ptr:(double* dx);
+     cblas_drotg(&v[0], &v[1], &v[2], &v[3]);
+   }
+   |]
 
 

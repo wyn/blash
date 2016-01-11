@@ -160,16 +160,18 @@ map_reduce mapper reducer n dx incx =
 rotg :: (Num a, Ord a, Floating a)
         => a
         -> a
+        -> a
+        -> a
         -> (a,a,a,a)
-rotg da db = doRotG
+rotg da db c s = doRotG
   where
     abs_da = abs da
     abs_db = abs db
     scale = abs_da + abs_db
     roe = if abs_da > abs_db then da else db
     doRotG
-      | scale == fZERO = (0.0, 0.0, 1.0, 0.0)
-      | otherwise      = (da', db', cs', sn')
+      | scale == fZERO = (da, db, 1.0, 0.0)
+      | otherwise = (da', db', cs', sn')
       where
         r' = (signum roe) * scale * (sqrt $ da2 + db2)
         da2 = (da / scale) ** 2

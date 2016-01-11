@@ -2,6 +2,7 @@ module TestBlashImpl where
 
 import           Data.Coerce (coerce)
 import qualified Data.Vector.Storable as VS
+import           Data.Vector.Storable ((!))
 import           Foreign.C.Types
 import           Test.QuickCheck (Positive(..), NonZero(..))
 import           Test.QuickCheck.Property (Property)
@@ -133,3 +134,23 @@ prop_swapM (BlasArgs (Positive n) xs (NonZero incx) ys (NonZero incy)) = monadic
   assert $ and $ zipWith (\a e -> a ~== coerce e) (VS.toList actualYS) (VS.toList expectedYS)
   
 
+prop_rotg :: Double -> Double -> Double -> Double -> Property
+prop_rotg da db c s = monadicIO $ do
+  -- expected uses the CBLAS implementation via inline-c
+  (e0, e1, e2, e3) <- run $ do
+    let
+      dx = [da, db, c, s]
+      dx' = VS.fromList (coerce dx)
+    cblas_rotgW dx'
+    return (  dx' ! 0
+            , dx' ! 1
+            , dx' ! 2
+            , dx' ! 3
+            )
+
+  assert $ a0 ~== coerce e0
+  assert $ a1 ~== coerce e1
+  assert $ a2 ~== coerce e2
+  assert $ a3 ~== coerce e3
+    where
+      (a0, a1, a2, a3) = BI.rotg da db c s
